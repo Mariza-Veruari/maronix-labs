@@ -1,0 +1,11 @@
+import {test} from 'node:test';
+import assert from 'node:assert/strict';
+import {onRequestPost} from '../functions/api/contact.ts';
+const env={ALLOWED_ORIGIN:'https://maronixlabs.com',TURNSTILE_SECRET_KEY:'test',RESEND_API_KEY:'test',CONTACT_TO:'owner@example.com',CONTACT_FROM:'studio@example.com'};
+const body={name:'Test User',email:'person@example.com',service:'Web Development',budget:'',company:'',description:'A new website for our business.',website:'',token:'token'};
+const req=(data:unknown=body,origin=env.ALLOWED_ORIGIN)=>new Request('https://maronixlabs.com/api/contact',{method:'POST',headers:{origin,'content-type':'application/json'},body:JSON.stringify(data)});
+test('rejects untrusted origins',async()=>assert.equal((await onRequestPost({request:req(body,'https://other.example'),env})).status,403));
+test('fails clearly without email setup',async()=>assert.equal((await onRequestPost({request:req(),env:{...env,RESEND_API_KEY:''}})).status,503));
+test('rejects invalid fields and honeypot',async()=>{for(const data of [{...body,email:'invalid'},{...body,description:'short'},{...body,website:'spam'},{...body,service:'unknown'}])assert.equal((await onRequestPost({request:req(data),env})).status,400)});
+test('rejects oversized bodies',async()=>assert.equal((await onRequestPost({request:req({...body,description:'x'.repeat(25000)}),env})).status,413));
+test('verification and delivery results are respected',async()=>{const original=globalThis.fetch;try{let calls=0;globalThis.fetch=async()=>{calls++;return Response.json({success:false})};assert.equal((await onRequestPost({request:req(),env})).status,400);assert.equal(calls,1);globalThis.fetch=async(input)=>String(input).includes('siteverify')?Response.json({success:true,hostname:'maronixlabs.com'}):Response.json({error:'provider failure'},{status:500});assert.equal((await onRequestPost({request:req(),env})).status,502);globalThis.fetch=async(input)=>String(input).includes('siteverify')?Response.json({success:true,hostname:'maronixlabs.com'}):Response.json({id:'accepted'});assert.equal((await onRequestPost({request:req(),env})).status,200)}finally{globalThis.fetch=original}});

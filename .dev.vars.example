@@ -1,0 +1,6 @@
+# Copy to .dev.vars ONLY for local Pages emulation; never commit the real file.
+TURNSTILE_SECRET_KEY=
+RESEND_API_KEY=
+CONTACT_TO=
+CONTACT_FROM=
+ALLOWED_ORIGIN=https://maronixlabs.com

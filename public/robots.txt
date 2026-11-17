@@ -1,0 +1,3 @@
+User-agent: *
+Allow: /
+Sitemap: https://maronixlabs.com/sitemap.xml
